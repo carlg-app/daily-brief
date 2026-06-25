@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Daily Brief">
+  <meta name="theme-color" content="#1a1a2e">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="styles.css">
+  <title>Daily Brief</title>
+</head>
+<body>
+
+  <!-- ═══════════════════════════════════════════
+       SETUP SCREEN (shown on first launch)
+  ═══════════════════════════════════════════ -->
+  <div id="screen-setup" class="screen hidden">
+    <div class="setup-wrap">
+      <div class="setup-logo">☀️</div>
+      <h1 class="setup-title">Daily Brief</h1>
+      <p class="setup-sub">Your personal, non-biased news intelligence app.<br>Enter your Supabase credentials to get started.</p>
+      <div class="setup-card">
+        <label class="setup-label">Supabase Project URL</label>
+        <input id="input-url" class="setup-input" type="url" placeholder="https://xxxx.supabase.co" autocomplete="off" spellcheck="false">
+        <label class="setup-label" style="margin-top:16px">Supabase Anon Key</label>
+        <input id="input-key" class="setup-input" type="text" placeholder="eyJhbGci..." autocomplete="off" spellcheck="false">
+        <p class="setup-hint">Find these in your Supabase project → Settings → API</p>
+        <button class="btn-primary" onclick="App.saveSetup()">Connect &amp; Continue →</button>
+      </div>
+      <p class="setup-footer">Don't have an account? <a href="https://supabase.com" target="_blank">supabase.com</a> is free.</p>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       MAIN APP (shown after setup)
+  ═══════════════════════════════════════════ -->
+  <div id="screen-app" class="screen hidden">
+
+    <!-- ── TODAY VIEW ── -->
+    <div id="view-today" class="view">
+      <div class="view-header">
+        <div class="header-top">
+          <div>
+            <div class="header-label">Daily Brief</div>
+            <h1 class="header-date" id="today-date">Thursday 25 June</h1>
+          </div>
+          <div class="header-actions">
+            <button class="icon-btn" id="btn-audio" onclick="App.toggleAudio()" title="Read aloud">🔊</button>
+            <button class="icon-btn" onclick="App.showSettings()" title="Settings">⚙️</button>
+          </div>
+        </div>
+        <!-- Category filter pills -->
+        <div class="pills-wrap">
+          <div class="pills" id="category-pills">
+            <button class="pill active" data-cat="all" onclick="App.filterCategory('all')">All</button>
+            <button class="pill" data-cat="world" onclick="App.filterCategory('world')">🌏 World</button>
+            <button class="pill" data-cat="nz" onclick="App.filterCategory('nz')">🥝 NZ</button>
+            <button class="pill" data-cat="nz-politics" onclick="App.filterCategory('nz-politics')">🏛 Politics</button>
+            <button class="pill" data-cat="social-justice" onclick="App.filterCategory('social-justice')">✊ Justice</button>
+            <button class="pill" data-cat="science" onclick="App.filterCategory('science')">🔬 Science</button>
+          </div>
+        </div>
+      </div>
+      <div class="view-scroll" id="today-content">
+        <div class="loading-state">
+          <div class="spinner"></div>
+          <p>Loading today's brief…</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── TOPICS VIEW ── -->
+    <div id="view-topics" class="view hidden">
+      <div class="view-header">
+        <h1 class="header-date">Topics</h1>
+        <div class="topics-search-wrap">
+          <input class="topics-search" id="topics-search-input" type="search" placeholder="Search topics…" oninput="App.filterTopics(this.value)">
+        </div>
+      </div>
+      <div class="view-scroll" id="topics-content">
+        <div class="loading-state">
+          <div class="spinner"></div>
+          <p>Loading topics…</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── TOPIC DETAIL VIEW ── -->
+    <div id="view-topic-detail" class="view hidden">
+      <div class="view-header detail-header">
+        <button class="back-btn" onclick="App.goBack()">‹ Topics</button>
+        <div id="topic-detail-header"></div>
+      </div>
+      <div class="view-scroll" id="topic-detail-content"></div>
+    </div>
+
+    <!-- ── SEARCH VIEW ── -->
+    <div id="view-search" class="view hidden">
+      <div class="view-header">
+        <h1 class="header-date">Search</h1>
+        <div class="topics-search-wrap">
+          <input class="topics-search" id="search-input" type="search" placeholder="Search articles, topics, events…" oninput="App.search(this.value)">
+        </div>
+      </div>
+      <div class="view-scroll" id="search-content">
+        <div class="empty-state">
+          <span class="empty-icon">🔍</span>
+          <p>Search across everything you've read</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SETTINGS SHEET ── -->
+    <div id="settings-overlay" class="overlay hidden" onclick="App.closeSettings()">
+      <div class="settings-sheet" onclick="event.stopPropagation()">
+        <div class="sheet-handle"></div>
+        <h2 class="sheet-title">Settings</h2>
+        <div class="settings-group">
+          <div class="settings-label">Supabase URL</div>
+          <input id="settings-url" class="setup-input" type="url" spellcheck="false">
+        </div>
+        <div class="settings-group">
+          <div class="settings-label">Supabase Anon Key</div>
+          <input id="settings-key" class="setup-input" type="text" spellcheck="false">
+        </div>
+        <button class="btn-primary" onclick="App.saveSettings()">Save</button>
+        <button class="btn-secondary" onclick="App.closeSettings()">Cancel</button>
+      </div>
+    </div>
+
+    <!-- ── BOTTOM NAV ── -->
+    <nav class="bottom-nav">
+      <button class="nav-btn active" id="nav-today" onclick="App.navigate('today')">
+        <span class="nav-icon">📰</span>
+        <span class="nav-label">Today</span>
+      </button>
+      <button class="nav-btn" id="nav-topics" onclick="App.navigate('topics')">
+        <span class="nav-icon">🏷</span>
+        <span class="nav-label">Topics</span>
+      </button>
+      <button class="nav-btn" id="nav-search" onclick="App.navigate('search')">
+        <span class="nav-icon">🔍</span>
+        <span class="nav-label">Search</span>
+      </button>
+    </nav>
+
+  </div><!-- /screen-app -->
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
