@@ -8,7 +8,7 @@ const App = (() => {
   // ── State ──────────────────────────────────────
   let db = null;
   let state = {
-    view: 'today',
+    view: null,  // null so navigate('today') in init() always runs loadToday()
     prevView: null,
     category: 'all',
     articles: [],
