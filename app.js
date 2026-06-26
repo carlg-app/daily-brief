@@ -223,40 +223,71 @@ const App = (() => {
 
     let articles = [];
     let summary = DEMO_SUMMARY;
+    let isLive = false;
 
     try {
       if (db) {
-        const [{ data: arts }, { data: sum }] = await Promise.race([
+        const dateStr = todayStr();
+        console.log('[Daily Brief] Loading date:', dateStr);
+
+        // Try full join query first
+        const [artsRes, sumRes] = await Promise.race([
           Promise.all([
             db.from('articles')
               .select('*, article_topics(topic_id, topics(id, name))')
-              .eq('date', todayStr())
+              .eq('date', dateStr)
               .order('created_at'),
             db.from('daily_summaries')
               .select('summary')
-              .eq('date', todayStr())
+              .eq('date', dateStr)
               .maybeSingle()
           ]),
-          timeout(6000).then(() => { throw new Error('timeout'); })
+          timeout(10000).then(() => { throw new Error('timeout'); })
         ]);
 
-        if (arts?.length) {
-          articles = arts.map(a => ({
+        if (artsRes.error) {
+          console.error('[Daily Brief] Join query error:', artsRes.error);
+        }
+
+        if (artsRes.data?.length) {
+          isLive = true;
+          articles = artsRes.data.map(a => ({
             ...a,
             topics: a.article_topics?.map(at => at.topics).filter(Boolean) || []
           }));
-          if (sum?.summary) summary = sum.summary;
+          if (sumRes.data?.summary) summary = sumRes.data.summary;
         } else {
-          articles = DEMO_ARTICLES;
+          // Fallback: simple query without join (in case FK relationships aren't resolved)
+          console.log('[Daily Brief] Join returned empty — trying simple query');
+          const { data: simpleArts, error: simpleErr } = await db
+            .from('articles')
+            .select('*')
+            .eq('date', dateStr)
+            .order('created_at');
+
+          if (simpleErr) {
+            console.error('[Daily Brief] Simple query error:', simpleErr);
+          } else if (simpleArts?.length) {
+            isLive = true;
+            articles = simpleArts.map(a => ({ ...a, topics: [] }));
+            if (sumRes.data?.summary) summary = sumRes.data.summary;
+          } else {
+            console.log('[Daily Brief] No articles found for', dateStr, '— using demo data');
+          }
+
+          if (!isLive) articles = DEMO_ARTICLES;
         }
       } else {
+        console.log('[Daily Brief] No Supabase connection — using demo data');
         articles = DEMO_ARTICLES;
       }
     } catch (e) {
+      console.error('[Daily Brief] Load failed:', e.message);
       articles = DEMO_ARTICLES;
     }
 
     state.articles = articles;
+    state.isLive = isLive;
     renderToday(articles, summary);
   }
 
@@ -271,6 +302,13 @@ const App = (() => {
 
   function renderToday(articles, summary) {
     const el = document.getElementById('today-content');
+
+    // Update live/demo badge in header
+    const badge = document.getElementById('data-source-badge');
+    if (badge) {
+      badge.textContent = state.isLive ? '● Live' : '● Demo';
+      badge.className = 'data-source-badge ' + (state.isLive ? 'badge-live' : 'badge-demo');
+    }
 
     const summaryHtml = `
       <div class="summary-card">
