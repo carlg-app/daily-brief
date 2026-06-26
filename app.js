@@ -320,22 +320,26 @@ const App = (() => {
   function renderArticleCard(a) {
     if (a.is_multi_perspective && a.source_2_name) {
       return `
-        <div class="persp-card">
+        <div class="persp-card" id="card-${a.id}">
           <div class="persp-header">
-            <div class="persp-badge">⚖ Two Perspectives</div>
+            <div class="persp-badge">⚖ Two Perspectives <span class="persp-badge-hint">· swipe</span></div>
             <div class="persp-headline">${escHtml(a.headline)}</div>
           </div>
-          <div class="persp-cols">
-            <div class="persp-col">
+          <div class="persp-slider" id="slider-${a.id}" onscroll="App.updateDots('${a.id}', this)">
+            <div class="persp-slide">
               <div class="persp-source">${escHtml(a.source_1_name || '')}</div>
               <div class="persp-text">${escHtml(a.summary)}</div>
-              ${a.source_1_url ? `<a class="persp-link" href="${a.source_1_url}" target="_blank">Read more →</a>` : ''}
+              ${a.source_1_url ? `<a class="persp-link" href="${a.source_1_url}" target="_blank">Read on ${escHtml(a.source_1_name)} →</a>` : ''}
             </div>
-            <div class="persp-col">
+            <div class="persp-slide">
               <div class="persp-source">${escHtml(a.source_2_name)}</div>
               <div class="persp-text">${escHtml(a.source_2_text || '')}</div>
-              ${a.source_2_url ? `<a class="persp-link" href="${a.source_2_url}" target="_blank">Read more →</a>` : ''}
+              ${a.source_2_url ? `<a class="persp-link" href="${a.source_2_url}" target="_blank">Read on ${escHtml(a.source_2_name)} →</a>` : ''}
             </div>
+          </div>
+          <div class="persp-dots">
+            <span class="dot active" onclick="App.goToSlide('${a.id}', 0)"></span>
+            <span class="dot" onclick="App.goToSlide('${a.id}', 1)"></span>
           </div>
         </div>`;
     }
@@ -363,6 +367,20 @@ const App = (() => {
           <div class="card-topic-chips">${topics}</div>
         </div>
       </div>`;
+  }
+
+  // ── PERSPECTIVES SWIPE ────────────────────────
+  function updateDots(articleId, slider) {
+    const dots = document.querySelectorAll(`#card-${articleId} .dot`);
+    if (!dots.length) return;
+    const idx = Math.round(slider.scrollLeft / slider.offsetWidth);
+    dots.forEach((d, i) => d.classList.toggle('active', i === idx));
+  }
+
+  function goToSlide(articleId, idx) {
+    const slider = document.getElementById(`slider-${articleId}`);
+    if (!slider) return;
+    slider.scrollTo({ left: idx * slider.offsetWidth, behavior: 'smooth' });
   }
 
   function toggleCard(id) {
@@ -472,12 +490,21 @@ const App = (() => {
     let articles = [];
     try {
       if (db) {
-        const { data } = await db
+        // Step 1: get article IDs linked to this topic
+        const { data: links } = await db
           .from('article_topics')
-          .select('articles(*)')
-          .eq('topic_id', topicId)
-          .order('articles.date', { ascending: false });
-        articles = data?.map(r => r.articles).filter(Boolean) || [];
+          .select('article_id')
+          .eq('topic_id', topicId);
+        const ids = (links || []).map(r => r.article_id).filter(Boolean);
+        // Step 2: fetch those articles, sorted newest-first
+        if (ids.length) {
+          const { data: arts } = await db
+            .from('articles')
+            .select('*')
+            .in('id', ids)
+            .order('date', { ascending: false });
+          articles = arts || [];
+        }
       } else {
         articles = DEMO_ARTICLES.filter(a => (a.topics || []).some(t => t.id === topicId));
       }
@@ -676,7 +703,8 @@ const App = (() => {
     navigate, goBack, filterCategory, filterTopics,
     toggleCard, toggleSummary, toggleContext,
     openTopic, saveNotes, addContextNote,
-    search, toggleAudio, readSummary, readAll
+    search, toggleAudio, readSummary, readAll,
+    updateDots, goToSlide
   };
 
 })();
