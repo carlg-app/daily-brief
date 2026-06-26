@@ -46,6 +46,46 @@ const App = (() => {
     return s;
   }
 
+  // ── Source lean lookup (for per-slide lean badges) ──
+  function srcLrScore(name) {
+    const n = (name || '').toLowerCase();
+    if (n.includes('al jazeera') || n.includes('aljazeera')) return -30;
+    if (n.includes('guardian'))          return -35;
+    if (n.includes('rnz') || n.includes('radio new zealand')) return -20;
+    if (n.includes('newsroom'))          return -15;
+    if (n.includes('stuff'))             return -10;
+    if (n.includes('nz herald') || n.includes('new zealand herald')) return +12;
+    if (n.includes('beehive'))           return +18;
+    if (n.includes('act nz') || n.includes('act party')) return +38;
+    if (n.includes('national party') || n.includes('national')) return +20;
+    if (n.includes('fox'))               return +50;
+    if (n.includes('breitbart'))         return +75;
+    if (n.includes('daily wire'))        return +60;
+    if (n.includes('american conservative')) return +45;
+    if (n.includes('reuters') || n.includes('ap news') || n.includes('associated press')) return 0;
+    if (n.includes('bbc'))               return -5;
+    if (n.includes('cnn'))               return -18;
+    if (n.includes('msnbc'))             return -30;
+    if (n.includes('atlantic'))          return -8;
+    if (n.includes('washington post'))   return -18;
+    if (n.includes('new york times'))    return -20;
+    if (n.includes('nbc'))               return -15;
+    if (n.includes('abc'))               return -15;
+    if (n.includes('abc australia'))     return -20;
+    if (n.includes('abc news'))          return -15;
+    if (n.includes('naacp') || n.includes('aclu')) return -30;
+    if (n.includes('sciencedaily') || n.includes('nature') || n.includes('science daily')) return 0;
+    return null; // unknown — will fall back to article lr_score
+  }
+
+  function leanEmoji(score) {
+    if (score == null) return '⚪';
+    const s = Number(score);
+    if (s < -6) return '🔴';
+    if (s > 6)  return '🔵';
+    return '⚪';
+  }
+
   // ── Political Compass helpers ──────────────────
   function lrLabel(score) {
     if (score == null) return 'Neutral';
@@ -516,12 +556,16 @@ const App = (() => {
   }
 
   function renderArticleCard(a) {
-    // Determine L/R lean label for persp-lean label (nuanced from compass score)
-    const lr1 = a.lr_score != null ? Number(a.lr_score) : null;
-    const lean1Label = lr1 != null ? lrLabel(lr1) : 'Left-leaning';
-    const lean2Label = lr1 != null ? lrLabel(-(lr1)) : 'Right-leaning';
-    const lean1Color = lr1 != null && lr1 < 0 ? '#dc2626' : '#dc2626';
-    const lean2Color = '#2563eb';
+    // Per-source lean: look up by source name, fall back to article lr_score
+    const articleLr = a.lr_score != null ? Number(a.lr_score) : 0;
+    const s1Score = srcLrScore(a.source_1_name) ?? articleLr;
+    const s2Score = srcLrScore(a.source_2_name) ?? articleLr;
+    const lean1Label = lrLabel(s1Score);
+    const lean2Label = lrLabel(s2Score);
+    const lean1Color = lrColor(s1Score);
+    const lean2Color = lrColor(s2Score);
+    const lean1Emoji = leanEmoji(s1Score);
+    const lean2Emoji = leanEmoji(s2Score);
 
     if (a.is_multi_perspective && a.source_2_name) {
       return `
@@ -535,13 +579,13 @@ const App = (() => {
           </div>
           <div class="persp-slider" id="slider-${a.id}" onscroll="App.updateDots('${a.id}', this)">
             <div class="persp-slide">
-              <div class="persp-lean persp-lean-left">🔴 ${escHtml(lean1Label)}</div>
+              <div class="persp-lean" style="color:${lean1Color}">${lean1Emoji} ${escHtml(lean1Label)}</div>
               <div class="persp-source">${escHtml(a.source_1_name || '')}</div>
               <div class="persp-text">${escHtml(a.summary)}</div>
               ${a.source_1_url ? `<a class="persp-link" href="${a.source_1_url}" target="_blank">Read full article on ${escHtml(a.source_1_name)} →</a>` : ''}
             </div>
             <div class="persp-slide">
-              <div class="persp-lean persp-lean-right">🔵 ${escHtml(lean2Label)}</div>
+              <div class="persp-lean" style="color:${lean2Color}">${lean2Emoji} ${escHtml(lean2Label)}</div>
               <div class="persp-source">${escHtml(a.source_2_name)}</div>
               <div class="persp-text">${escHtml(a.source_2_text || '')}</div>
               ${a.source_2_url ? `<a class="persp-link" href="${a.source_2_url}" target="_blank">Read full article on ${escHtml(a.source_2_name)} →</a>` : ''}
