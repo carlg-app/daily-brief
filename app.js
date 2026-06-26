@@ -22,13 +22,97 @@ const App = (() => {
 
   // ── Category config ────────────────────────────
   const CATS = {
-    'world':          { label: 'World News',        icon: '🌏' },
-    'wars':           { label: 'Wars & Conflicts',  icon: '⚔️' },
-    'nz':             { label: 'New Zealand',        icon: '🥝' },
-    'nz-politics':    { label: 'NZ Politics',        icon: '🏛' },
-    'social-justice': { label: 'Social Justice',     icon: '✊' },
-    'science':        { label: 'Science',            icon: '🔬' }
+    'world':          { label: 'World News',        icon: '🌏', color: '#2563eb', bg: 'rgba(37,99,235,0.10)' },
+    'wars':           { label: 'Wars & Conflicts',  icon: '⚔️', color: '#dc2626', bg: 'rgba(220,38,38,0.10)' },
+    'nz':             { label: 'New Zealand',        icon: '🥝', color: '#059669', bg: 'rgba(5,150,105,0.10)' },
+    'nz-politics':    { label: 'NZ Politics',        icon: '🏛', color: '#7c3aed', bg: 'rgba(124,58,237,0.10)' },
+    'social-justice': { label: 'Social Justice',     icon: '✊', color: '#d97706', bg: 'rgba(217,119,6,0.10)'  },
+    'science':        { label: 'Science',            icon: '🔬', color: '#0891b2', bg: 'rgba(8,145,178,0.10)'  }
   };
+
+  // ── Category urgency order (higher = more urgent) ─
+  const CAT_URGENCY = { wars:6, world:5, 'nz-politics':4, nz:3, 'social-justice':2, science:1 };
+
+  // ── Urgency scoring ────────────────────────────
+  const URGENCY_KW = ['breaking','killed','dead','attack','crisis','emergency','collapse',
+    'shooting','explosion','critical','catastrophe','evacuate','massacre'];
+
+  function urgencyScore(a) {
+    let s = CAT_URGENCY[a.category] || 0;
+    if (isWarArticle && isWarArticle(a)) s = Math.max(s, 6);
+    if (a.is_multi_perspective) s += 0.5;
+    const txt = ((a.headline||'')+' '+(a.summary||'')).toLowerCase();
+    if (URGENCY_KW.some(k => txt.includes(k))) s += 1;
+    return s;
+  }
+
+  // ── Political Compass helpers ──────────────────
+  function lrLabel(score) {
+    if (score == null) return 'Neutral';
+    const s = Number(score);
+    if (s <= -75) return 'Far Left';
+    if (s <= -45) return 'Left';
+    if (s <= -20) return 'Centre-Left';
+    if (s <= -6)  return 'Slight Left';
+    if (s <=  6)  return 'Neutral';
+    if (s <=  20) return 'Slight Right';
+    if (s <=  45) return 'Centre-Right';
+    if (s <=  75) return 'Right';
+    return 'Far Right';
+  }
+
+  function alLabel(score) {
+    if (score == null) return 'Neutral';
+    const s = Number(score);
+    if (s <= -60) return 'Libertarian';
+    if (s <= -20) return 'Slight Libertarian';
+    if (s <=  20) return 'Neutral';
+    if (s <=  60) return 'Slight Authoritarian';
+    return 'Authoritarian';
+  }
+
+  function lrColor(score) {
+    const s = Number(score || 0);
+    if (s <= -20) return '#dc2626';   // left → red
+    if (s >=  20) return '#2563eb';   // right → blue
+    return '#9ca3af';                  // neutral → grey
+  }
+
+  function alColor(score) {
+    const s = Number(score || 0);
+    if (s <= -20) return '#059669';   // libertarian → green
+    if (s >=  20) return '#d97706';   // authoritarian → amber
+    return '#9ca3af';
+  }
+
+  function compassHtml(a) {
+    const lr = a.lr_score != null ? Number(a.lr_score) : 0;
+    const al = a.al_score != null ? Number(a.al_score) : 0;
+    const lrPos = ((lr + 100) / 200 * 100).toFixed(1);
+    const alPos = ((al + 100) / 200 * 100).toFixed(1);
+    const lrc = lrColor(lr), alc = alColor(al);
+    return `
+      <div class="compass-wrap">
+        <div class="cx-row">
+          <span class="cx-pole">L</span>
+          <div class="cx-bar"><div class="cx-dot" style="left:${lrPos}%;background:${lrc}"></div></div>
+          <span class="cx-pole">R</span>
+          <span class="cx-lbl" style="color:${lrc}">${lrLabel(lr)}</span>
+        </div>
+        <div class="cx-row">
+          <span class="cx-pole">Au</span>
+          <div class="cx-bar"><div class="cx-dot" style="left:${alPos}%;background:${alc}"></div></div>
+          <span class="cx-pole">Li</span>
+          <span class="cx-lbl" style="color:${alc}">${alLabel(al)}</span>
+        </div>
+      </div>`;
+  }
+
+  // ── Category badge HTML ────────────────────────
+  function catBadgeHtml(cat) {
+    const c = CATS[cat] || { label: cat, icon: '📄', color: '#6b7280', bg: 'rgba(107,114,128,0.10)' };
+    return `<span class="card-tag-cat" style="color:${c.color};background:${c.bg}">${c.icon} ${c.label}</span>`;
+  }
 
   // ── DEMO DATA (shown before Supabase is populated) ──
   const DEMO_ARTICLES = [
@@ -391,15 +475,25 @@ const App = (() => {
     // Remove existing article sections and empty-state (keep summary card)
     container.querySelectorAll('.section-head, .article-card, .persp-card, .empty-state').forEach(e => e.remove());
 
+    // ── Deduplicate by headline (case-insensitive) ──
+    const seen = new Set();
+    articles = articles.filter(a => {
+      const key = (a.headline || '').toLowerCase().trim();
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
     if (!articles.length) {
       container.insertAdjacentHTML('beforeend', '<div class="empty-state"><span class="empty-icon">📭</span><p>No articles for this category today.</p></div>');
       return;
     }
 
     if (withSectionHeaders) {
+      // Initial load: group by category in urgency order, sort within each group
       const groups = {};
       articles.forEach(a => { (groups[a.category] = groups[a.category] || []).push(a); });
-      const catOrder = ['world','wars','nz','nz-politics','social-justice','science'];
+      const catOrder = ['wars','world','nz-politics','nz','social-justice','science'];
       catOrder.forEach(cat => {
         if (!groups[cat]) return;
         container.insertAdjacentHTML('beforeend', `
@@ -408,30 +502,46 @@ const App = (() => {
             <span class="section-title">${catLabel(cat)}</span>
             <div class="section-line"></div>
           </div>`);
-        groups[cat].forEach(a => container.insertAdjacentHTML('beforeend', renderArticleCard(a)));
+        // Sort within section: multi-perspective first, then by created_at desc
+        const sorted = [...groups[cat]].sort((a,b) =>
+          (b.is_multi_perspective ? 1 : 0) - (a.is_multi_perspective ? 1 : 0) ||
+          new Date(b.created_at||0) - new Date(a.created_at||0));
+        sorted.forEach(a => container.insertAdjacentHTML('beforeend', renderArticleCard(a)));
       });
     } else {
-      articles.forEach(a => container.insertAdjacentHTML('beforeend', renderArticleCard(a)));
+      // Pill-filtered or "All" view: flat urgency-sorted list
+      const sorted = [...articles].sort((a, b) => urgencyScore(b) - urgencyScore(a));
+      sorted.forEach(a => container.insertAdjacentHTML('beforeend', renderArticleCard(a)));
     }
   }
 
   function renderArticleCard(a) {
+    // Determine L/R lean label for persp-lean label (nuanced from compass score)
+    const lr1 = a.lr_score != null ? Number(a.lr_score) : null;
+    const lean1Label = lr1 != null ? lrLabel(lr1) : 'Left-leaning';
+    const lean2Label = lr1 != null ? lrLabel(-(lr1)) : 'Right-leaning';
+    const lean1Color = lr1 != null && lr1 < 0 ? '#dc2626' : '#dc2626';
+    const lean2Color = '#2563eb';
+
     if (a.is_multi_perspective && a.source_2_name) {
       return `
         <div class="persp-card" id="card-${a.id}">
           <div class="persp-header">
-            <div class="persp-badge">⚖ Two Perspectives <span class="persp-badge-hint">· swipe</span></div>
+            <div class="persp-badge-row">
+              <div class="persp-badge">⚖ Two Perspectives <span class="persp-badge-hint">· swipe</span></div>
+              ${catBadgeHtml(a.category)}
+            </div>
             <div class="persp-headline">${escHtml(a.headline)}</div>
           </div>
           <div class="persp-slider" id="slider-${a.id}" onscroll="App.updateDots('${a.id}', this)">
             <div class="persp-slide">
-              <div class="persp-lean persp-lean-left">🔴 Left-leaning</div>
+              <div class="persp-lean persp-lean-left">🔴 ${escHtml(lean1Label)}</div>
               <div class="persp-source">${escHtml(a.source_1_name || '')}</div>
               <div class="persp-text">${escHtml(a.summary)}</div>
               ${a.source_1_url ? `<a class="persp-link" href="${a.source_1_url}" target="_blank">Read full article on ${escHtml(a.source_1_name)} →</a>` : ''}
             </div>
             <div class="persp-slide">
-              <div class="persp-lean persp-lean-right">🔵 Right-leaning</div>
+              <div class="persp-lean persp-lean-right">🔵 ${escHtml(lean2Label)}</div>
               <div class="persp-source">${escHtml(a.source_2_name)}</div>
               <div class="persp-text">${escHtml(a.source_2_text || '')}</div>
               ${a.source_2_url ? `<a class="persp-link" href="${a.source_2_url}" target="_blank">Read full article on ${escHtml(a.source_2_name)} →</a>` : ''}
@@ -441,6 +551,7 @@ const App = (() => {
             <span class="dot active" onclick="App.goToSlide('${a.id}', 0)"></span>
             <span class="dot" onclick="App.goToSlide('${a.id}', 1)"></span>
           </div>
+          ${compassHtml(a)}
         </div>`;
     }
 
@@ -453,7 +564,7 @@ const App = (() => {
         <div class="card-body" onclick="App.toggleCard('${a.id}')">
           <div class="card-meta">
             <span class="card-source">${escHtml(a.source_1_name || '')}</span>
-            <span class="card-tag">${catLabel(a.category)}</span>
+            ${catBadgeHtml(a.category)}
           </div>
           <div class="card-headline">${escHtml(a.headline)}</div>
           <div class="card-summary">${escHtml(a.summary)}</div>
@@ -468,6 +579,7 @@ const App = (() => {
             <button class="card-expand" id="expand-${a.id}" onclick="App.toggleCard('${a.id}')">More ›</button>
           </div>
         </div>
+        ${compassHtml(a)}
       </div>`;
   }
 
