@@ -403,23 +403,62 @@ a { color: var(--accent); }
 }
 .dot.active { background: var(--accent); width: 16px; border-radius: 3px; }
 
-/* ── Center (neutral) slide ── */
-.persp-slide-center { background: rgba(124,131,253,0.03); }
+/* ── Center (compare) slide ── */
+.persp-slide-center {
+  background: rgba(124,131,253,0.03);
+  display: flex; flex-direction: column; justify-content: center;
+}
 .persp-center-label {
   font-size: 10px; font-weight: 800; letter-spacing: 1.5px;
   text-transform: uppercase; color: var(--accent);
-  margin-bottom: 10px;
+  margin-bottom: 14px;
+}
+.persp-center-sources {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+.persp-center-src {
+  font-size: 12px; font-weight: 700; letter-spacing: 0.3px;
+}
+.persp-center-vs {
+  font-size: 10px; font-weight: 600; color: var(--text-micro);
+  text-transform: uppercase; letter-spacing: 1px;
 }
 .persp-center-hint {
-  font-size: 11px; color: var(--text-micro); margin-top: 10px;
+  font-size: 11px; color: var(--text-micro); margin-top: 12px;
   letter-spacing: 0.2px;
 }
 .persp-center-chips {
-  display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px;
+  display: flex; flex-wrap: wrap; gap: 5px; margin-top: 12px;
 }
-.persp-text-cta {
-  font-style: italic; color: var(--text-micro);
+
+/* ── Perspective link row (link + search fallback) ── */
+.persp-link-row {
+  display: flex; align-items: center; gap: 12px; margin-top: 10px;
 }
+.persp-link-search {
+  font-size: 11px; color: var(--text-micro); font-weight: 500;
+  text-decoration: none; white-space: nowrap;
+}
+.persp-link-search:hover { color: var(--accent); }
+
+/* ── Single-source bias warning ── */
+.card-bias-warn {
+  font-size: 10px; font-weight: 600; color: var(--text-micro);
+  padding: 4px 16px 6px;
+  border-top: 1px solid var(--border);
+  letter-spacing: 0.3px;
+}
+
+/* ── Single-card link row (link + search) ── */
+.card-link-row {
+  display: flex; align-items: center; gap: 12px;
+}
+.card-search-link {
+  font-size: 11px; color: var(--text-micro); font-weight: 500;
+  text-decoration: none; white-space: nowrap;
+}
+.card-search-link:hover { color: var(--accent); }
 
 /* ── In-slide compass ── */
 .compass-slide-wrap {
