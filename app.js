@@ -21,11 +21,12 @@ const App = (() => {
 
   // ── Category config ────────────────────────────
   const CATS = {
-    'world':          { label: 'World News',      icon: '🌏' },
-    'nz':             { label: 'New Zealand',      icon: '🥝' },
-    'nz-politics':    { label: 'NZ Politics',      icon: '🏛' },
-    'social-justice': { label: 'Social Justice',   icon: '✊' },
-    'science':        { label: 'Science',          icon: '🔬' }
+    'world':          { label: 'World News',        icon: '🌏' },
+    'wars':           { label: 'Wars & Conflicts',  icon: '⚔️' },
+    'nz':             { label: 'New Zealand',        icon: '🥝' },
+    'nz-politics':    { label: 'NZ Politics',        icon: '🏛' },
+    'social-justice': { label: 'Social Justice',     icon: '✊' },
+    'science':        { label: 'Science',            icon: '🔬' }
   };
 
   // ── DEMO DATA (shown before Supabase is populated) ──
@@ -215,7 +216,11 @@ const App = (() => {
   function catLabel(cat) { return CATS[cat]?.label || cat; }
 
   // ── TODAY VIEW ────────────────────────────────
+  let _loadTodayId = 0; // guard against concurrent loads causing duplicates
+
   async function loadToday() {
+    const myLoadId = ++_loadTodayId;
+
     const el = document.getElementById('today-date');
     const today = new Date();
     el.textContent = today.toLocaleDateString('en-NZ', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -256,6 +261,7 @@ const App = (() => {
           ...a,
           topics: a.article_topics?.map(at => at.topics).filter(Boolean) || []
         }));
+        if (myLoadId !== _loadTodayId) return; // stale load, discard
         state.articles = liveArticles;
         state.isLive = true;
         renderToday(liveArticles, sumRes.data?.summary || DEMO_SUMMARY);
@@ -267,6 +273,7 @@ const App = (() => {
 
         if (simpleErr) console.error('[Daily Brief] Simple query error:', simpleErr);
         else if (simpleArts?.length) {
+          if (myLoadId !== _loadTodayId) return; // stale load, discard
           state.articles = simpleArts.map(a => ({ ...a, topics: [] }));
           state.isLive = true;
           renderToday(state.articles, sumRes.data?.summary || DEMO_SUMMARY);
@@ -328,7 +335,7 @@ const App = (() => {
     if (withSectionHeaders) {
       const groups = {};
       articles.forEach(a => { (groups[a.category] = groups[a.category] || []).push(a); });
-      const catOrder = ['world','nz','nz-politics','social-justice','science'];
+      const catOrder = ['world','wars','nz','nz-politics','social-justice','science'];
       catOrder.forEach(cat => {
         if (!groups[cat]) return;
         container.insertAdjacentHTML('beforeend', `
@@ -461,7 +468,7 @@ const App = (() => {
     }
 
     // Group by category
-    const catOrder = ['world','nz','nz-politics','social-justice','science','general'];
+    const catOrder = ['world','wars','nz','nz-politics','social-justice','science','general'];
     const groups = {};
     topics.forEach(t => { (groups[t.category || 'general'] = groups[t.category || 'general'] || []).push(t); });
 
