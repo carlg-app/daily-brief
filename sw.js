@@ -3,7 +3,7 @@
    Caches app shell for offline support
 ════════════════════════════════════════ */
 
-const CACHE = 'daily-brief-v14';
+const CACHE = 'daily-brief-v15';
 const SHELL = ['/', '/index.html', '/styles.css', '/app.js', '/manifest.json'];
 
 self.addEventListener('install', e => {
