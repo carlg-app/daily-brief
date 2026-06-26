@@ -113,7 +113,7 @@ const App = (() => {
     if (url && key) {
       connectSupabase(url, key);
       show('screen-app');
-      navigate('today');
+      navigate('today', true); // force=true — always run loadToday() on app open
     } else {
       show('screen-setup');
     }
