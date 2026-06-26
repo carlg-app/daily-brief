@@ -28,22 +28,27 @@
 
 /* ── Reset ── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { height: 100%; }
+html {
+  height: 100%;
+  height: 100dvh;
+  background: var(--bg-dark); /* fills Dynamic Island / status bar area */
+}
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif;
   background: var(--bg);
   color: var(--text);
   height: 100%;
+  height: 100dvh;
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
 }
 button { cursor: pointer; border: none; background: none; font: inherit; }
 input { font: inherit; }
 a { color: var(--accent); }
--webkit-tap-highlight-color: transparent;
 
 /* ── Screens ── */
-.screen { position: fixed; inset: 0; overflow: hidden; }
+.screen { position: fixed; inset: 0; overflow: hidden; background: var(--bg); }
 .hidden { display: none !important; }
 
 /* ── Setup Screen ── */
@@ -256,7 +261,7 @@ a { color: var(--accent); }
 }
 .topic-chip:active { opacity: 0.7; }
 
-/* ── Perspectives Card ── */
+/* ── Perspectives Card (swipeable) ── */
 .persp-card {
   background: var(--card); border-radius: var(--radius-card);
   box-shadow: var(--shadow-card); margin-bottom: 8px; overflow: hidden;
@@ -266,21 +271,40 @@ a { color: var(--accent); }
   font-size: 10px; font-weight: 700; letter-spacing: 1px;
   text-transform: uppercase; color: #d97706; margin-bottom: 6px;
 }
+.persp-badge-hint { font-size: 10px; color: var(--text-micro); font-weight: 400; margin-left: 4px; }
 .persp-headline {
   font-size: 15px; font-weight: 700; line-height: 1.35; color: var(--text);
 }
-.persp-cols { display: flex; border-top: 1px solid var(--border); }
-.persp-col { flex: 1; padding: 12px 14px; }
-.persp-col:first-child { border-right: 1px solid var(--border); }
+.persp-slider {
+  display: flex; overflow-x: scroll;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  border-top: 1px solid var(--border);
+}
+.persp-slider::-webkit-scrollbar { display: none; }
+.persp-slide {
+  flex: 0 0 100%; scroll-snap-align: start;
+  padding: 14px 16px; box-sizing: border-box;
+}
 .persp-source {
   font-size: 10px; letter-spacing: 1px; text-transform: uppercase;
   font-weight: 600; color: var(--text-micro); margin-bottom: 5px;
 }
-.persp-text { font-size: 12px; line-height: 1.55; color: var(--text-muted); }
+.persp-text { font-size: 13px; line-height: 1.6; color: var(--text-muted); }
 .persp-link {
-  font-size: 11px; color: var(--accent); font-weight: 600;
-  display: block; margin-top: 6px; text-decoration: none;
+  font-size: 12px; color: var(--accent); font-weight: 600;
+  display: block; margin-top: 8px; text-decoration: none;
 }
+.persp-dots {
+  display: flex; justify-content: center; gap: 6px;
+  padding: 8px 0 12px; border-top: 1px solid var(--border);
+}
+.dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--border); cursor: pointer; transition: background 0.2s;
+}
+.dot.active { background: var(--accent); width: 16px; border-radius: 3px; }
 
 /* ── Topics View ── */
 .topics-search-wrap { padding: 10px 0 12px; }
