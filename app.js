@@ -178,6 +178,37 @@ const App = (() => {
       </div>`;
   }
 
+  // ── Compass inside a perspective slide ────────
+  // side: 'left' (compass on left, labels right) | 'right' (compass on right, labels left)
+  function compassSlideHtml(lr, al, side) {
+    const lrPos  = ((lr + 100) / 200 * 100).toFixed(1);
+    const alTop  = ((100 - al) / 200 * 100).toFixed(1);
+    const dotColor = compassDotColor(lr, al);
+    const wrapCls = side === 'right' ? 'compass-slide-wrap compass-slide-right' : 'compass-slide-wrap compass-slide-left';
+    return `
+      <div class="${wrapCls}">
+        <div class="compass-outer">
+          <div class="cx2-axis cx2-axis-h">Auth</div>
+          <div class="cx2-mid-row">
+            <div class="cx2-axis cx2-axis-v">L</div>
+            <div class="compass-grid">
+              <div class="cq cq-tl"></div><div class="cq cq-tr"></div>
+              <div class="cq cq-bl"></div><div class="cq cq-br"></div>
+              <div class="cx2-cross cx2-cross-h"></div>
+              <div class="cx2-cross cx2-cross-v"></div>
+              <div class="cx2-dot" style="left:${lrPos}%;top:${alTop}%;background:${dotColor}"></div>
+            </div>
+            <div class="cx2-axis cx2-axis-v">R</div>
+          </div>
+          <div class="cx2-axis cx2-axis-h">Lib</div>
+        </div>
+        <div class="cx2-labels">
+          <div class="cx2-lr-lbl" style="color:${lrColor(lr)}">${lrLabel(lr)}</div>
+          <div class="cx2-al-lbl" style="color:${alColor(al)}">${alLabel(al)}</div>
+        </div>
+      </div>`;
+  }
+
   // ── Category badge HTML ────────────────────────
   function catBadgeHtml(cat) {
     const c = CATS[cat] || { label: cat, icon: '📄', color: '#6b7280', bg: 'rgba(107,114,128,0.10)' };
@@ -583,6 +614,13 @@ const App = (() => {
       const sorted = [...articles].sort((a, b) => urgencyScore(b) - urgencyScore(a));
       sorted.forEach(a => container.insertAdjacentHTML('beforeend', renderArticleCard(a)));
     }
+
+    // Scroll 3-pane sliders to center (slide 1) after layout settles
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      container.querySelectorAll('.persp-slider.center-start').forEach(s => {
+        s.scrollLeft = s.offsetWidth;
+      });
+    }));
   }
 
   function renderArticleCard(a) {
@@ -601,35 +639,78 @@ const App = (() => {
     const lean2Emoji = leanEmoji(s2Score);
 
     if (a.is_multi_perspective && a.source_2_name) {
-      return `
-        <div class="persp-card" id="card-${a.id}">
-          <div class="persp-header">
-            <div class="persp-badge-row">
-              <div class="persp-badge">⚖ Two Perspectives <span class="persp-badge-hint">· swipe</span></div>
-              ${catBadgeHtml(a.category)}
+      // Only show three-pane layout if sources genuinely contrast (one left, one right)
+      const eff1 = s1Score;
+      const eff2 = s2Score;
+      const genuineContrast = (eff1 <= -5 && eff2 >= 5) || (eff1 >= 5 && eff2 <= -5);
+
+      if (genuineContrast) {
+        // Arrange so left source is always in left slide, right source in right slide
+        let leftSrc, leftScore, leftText, leftUrl;
+        let rightSrc, rightScore, rightText, rightUrl;
+        if (eff1 <= eff2) {
+          // source_1 is left-leaning
+          leftSrc = a.source_1_name; leftScore = eff1; leftText = null; leftUrl = a.source_1_url;
+          rightSrc = a.source_2_name; rightScore = eff2; rightText = a.source_2_text; rightUrl = a.source_2_url;
+        } else {
+          // source_2 is left-leaning (swap)
+          leftSrc = a.source_2_name; leftScore = eff2; leftText = a.source_2_text; leftUrl = a.source_2_url;
+          rightSrc = a.source_1_name; rightScore = eff1; rightText = null; rightUrl = a.source_1_url;
+        }
+        const al = a.al_score != null ? Number(a.al_score) : 0;
+        const topicChips = (a.topics || []).map(t =>
+          `<span class="topic-chip" onclick="App.openTopic('${t.id}')">${escHtml(t.name)}</span>`).join('');
+
+        return `
+          <div class="persp-card" id="card-${a.id}">
+            <div class="persp-header">
+              <div class="persp-badge-row">
+                <div class="persp-badge">⚖ Two Perspectives <span class="persp-badge-hint">· swipe</span></div>
+                ${catBadgeHtml(a.category)}
+              </div>
+              <div class="persp-headline">${escHtml(a.headline)}</div>
             </div>
-            <div class="persp-headline">${escHtml(a.headline)}</div>
-          </div>
-          <div class="persp-slider" id="slider-${a.id}" onscroll="App.updateDots('${a.id}', this)">
-            <div class="persp-slide">
-              <div class="persp-lean" style="color:${lean1Color}">${lean1Emoji} ${escHtml(lean1Label)}</div>
-              <div class="persp-source">${escHtml(a.source_1_name || '')}</div>
-              <div class="persp-text">${escHtml(a.summary)}</div>
-              ${a.source_1_url ? `<a class="persp-link" href="${a.source_1_url}" target="_blank">Read full article on ${escHtml(a.source_1_name)} →</a>` : ''}
+            <div class="persp-slider center-start" id="slider-${a.id}" onscroll="App.updateDots('${a.id}', this)">
+
+              <!-- LEFT slide — left-leaning source, compass bottom-left -->
+              <div class="persp-slide">
+                <div class="persp-lean" style="color:${lrColor(leftScore)}">${leanEmoji(leftScore)} ${escHtml(lrLabel(leftScore))}</div>
+                <div class="persp-source">${escHtml(leftSrc || '')}</div>
+                ${leftText
+                  ? `<div class="persp-text">${escHtml(leftText)}</div>`
+                  : `<div class="persp-text persp-text-cta">Read ${escHtml(leftSrc || 'this source')}'s full perspective below.</div>`}
+                ${leftUrl ? `<a class="persp-link" href="${leftUrl}" target="_blank">Read on ${escHtml(leftSrc)} →</a>` : ''}
+                ${compassSlideHtml(leftScore, al, 'left')}
+              </div>
+
+              <!-- CENTER slide — neutral facts, no compass -->
+              <div class="persp-slide persp-slide-center">
+                <div class="persp-center-label">⚖ The Facts</div>
+                <div class="persp-text">${escHtml(a.summary)}</div>
+                <div class="persp-center-hint">← left perspective &nbsp;·&nbsp; right perspective →</div>
+                ${topicChips ? `<div class="persp-center-chips">${topicChips}</div>` : ''}
+              </div>
+
+              <!-- RIGHT slide — right-leaning source, compass bottom-right -->
+              <div class="persp-slide">
+                <div class="persp-lean" style="color:${lrColor(rightScore)}">${leanEmoji(rightScore)} ${escHtml(lrLabel(rightScore))}</div>
+                <div class="persp-source">${escHtml(rightSrc || '')}</div>
+                ${rightText
+                  ? `<div class="persp-text">${escHtml(rightText)}</div>`
+                  : `<div class="persp-text persp-text-cta">Read ${escHtml(rightSrc || 'this source')}'s full perspective below.</div>`}
+                ${rightUrl ? `<a class="persp-link" href="${rightUrl}" target="_blank">Read on ${escHtml(rightSrc)} →</a>` : ''}
+                ${compassSlideHtml(rightScore, al, 'right')}
+              </div>
+
             </div>
-            <div class="persp-slide">
-              <div class="persp-lean" style="color:${lean2Color}">${lean2Emoji} ${escHtml(lean2Label)}</div>
-              <div class="persp-source">${escHtml(a.source_2_name)}</div>
-              <div class="persp-text">${escHtml(a.source_2_text || '')}</div>
-              ${a.source_2_url ? `<a class="persp-link" href="${a.source_2_url}" target="_blank">Read full article on ${escHtml(a.source_2_name)} →</a>` : ''}
+            <div class="persp-dots">
+              <span class="dot" onclick="App.goToSlide('${a.id}', 0)"></span>
+              <span class="dot active" onclick="App.goToSlide('${a.id}', 1)"></span>
+              <span class="dot" onclick="App.goToSlide('${a.id}', 2)"></span>
             </div>
-          </div>
-          <div class="persp-dots">
-            <span class="dot active" onclick="App.goToSlide('${a.id}', 0)"></span>
-            <span class="dot" onclick="App.goToSlide('${a.id}', 1)"></span>
-          </div>
-          ${compassHtml(a)}
-        </div>`;
+          </div>`;
+      }
+      // If no genuine contrast, fall through to standard single-card rendering below
     }
 
     const topics = (a.topics || []).map(t =>
@@ -672,6 +753,15 @@ const App = (() => {
     const slider = document.getElementById(`slider-${articleId}`);
     if (!slider) return;
     slider.scrollTo({ left: idx * slider.offsetWidth, behavior: 'smooth' });
+  }
+
+  // Re-center any 3-pane sliders that may have been lazy-loaded or deferred
+  function initCenterSliders(container) {
+    (container || document).querySelectorAll('.persp-slider.center-start').forEach(s => {
+      if (Math.round(s.scrollLeft / (s.offsetWidth || 1)) === 0) {
+        s.scrollLeft = s.offsetWidth;
+      }
+    });
   }
 
   function toggleCard(id) {
