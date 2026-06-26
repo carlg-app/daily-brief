@@ -75,6 +75,14 @@ const App = (() => {
     if (n.includes('abc news'))          return -15;
     if (n.includes('naacp') || n.includes('aclu')) return -30;
     if (n.includes('sciencedaily') || n.includes('nature') || n.includes('science daily')) return 0;
+    if (n.includes('wall street journal') || n.includes('wsj')) return +45;
+    if (n.includes('new york post') || n.includes('ny post')) return +40;
+    if (n.includes('telegraph'))         return +30;
+    if (n.includes('the times') || n.includes('sunday times')) return +18;
+    if (n.includes('economist'))         return +5;
+    if (n.includes('independent'))       return -10;
+    if (n.includes('npr'))               return -12;
+    if (n.includes('crisis group') || n.includes('crisisgroup')) return -5;
     return null; // unknown — will fall back to article lr_score
   }
 
@@ -582,7 +590,8 @@ const App = (() => {
     //   includes source baseline + keyword analysis + category nudges — more accurate than source name alone).
     // Slide 2: use source-name lookup as best available approximation (no separate per-source score stored).
     const articleLr = a.lr_score != null ? Number(a.lr_score) : 0;
-    const s1Score = articleLr;
+    // Badge: use known source lean if available — more reliable than keyword-scored article lr_score
+    const s1Score = srcLrScore(a.source_1_name) ?? articleLr;
     const s2Score = srcLrScore(a.source_2_name) ?? articleLr;
     const lean1Label = lrLabel(s1Score);
     const lean2Label = lrLabel(s2Score);
