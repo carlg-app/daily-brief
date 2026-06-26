@@ -125,25 +125,47 @@ const App = (() => {
     return '#9ca3af';
   }
 
+  // Dot colour reflects quadrant position on the 2D compass
+  function compassDotColor(lr, al) {
+    const lrN = lr / 100, alN = al / 100;
+    if (Math.abs(lrN) < 0.15 && Math.abs(alN) < 0.15) return '#9ca3af'; // neutral
+    if (lrN <= 0 && alN >= 0) return '#dc2626'; // auth-left  → red
+    if (lrN >= 0 && alN >= 0) return '#7c3aed'; // auth-right → purple
+    if (lrN <= 0 && alN <= 0) return '#059669'; // lib-left   → green
+    return '#d97706';                             // lib-right  → amber
+  }
+
   function compassHtml(a) {
     const lr = a.lr_score != null ? Number(a.lr_score) : 0;
     const al = a.al_score != null ? Number(a.al_score) : 0;
+    // lrPos: 0%=far left, 100%=far right
     const lrPos = ((lr + 100) / 200 * 100).toFixed(1);
-    const alPos = ((al + 100) / 200 * 100).toFixed(1);
+    // alTop: authoritarian=top(0%), libertarian=bottom(100%)
+    const alTop = ((100 - al) / 200 * 100).toFixed(1);
     const lrc = lrColor(lr), alc = alColor(al);
+    const dotColor = compassDotColor(lr, al);
     return `
       <div class="compass-wrap">
-        <div class="cx-row">
-          <span class="cx-pole">L</span>
-          <div class="cx-bar"><div class="cx-dot" style="left:${lrPos}%;background:${lrc}"></div></div>
-          <span class="cx-pole">R</span>
-          <span class="cx-lbl" style="color:${lrc}">${lrLabel(lr)}</span>
+        <div class="compass-outer">
+          <div class="cx2-axis cx2-axis-h">Auth</div>
+          <div class="cx2-mid-row">
+            <div class="cx2-axis cx2-axis-v">L</div>
+            <div class="compass-grid">
+              <div class="cq cq-tl"></div>
+              <div class="cq cq-tr"></div>
+              <div class="cq cq-bl"></div>
+              <div class="cq cq-br"></div>
+              <div class="cx2-cross cx2-cross-h"></div>
+              <div class="cx2-cross cx2-cross-v"></div>
+              <div class="cx2-dot" style="left:${lrPos}%;top:${alTop}%;background:${dotColor}"></div>
+            </div>
+            <div class="cx2-axis cx2-axis-v">R</div>
+          </div>
+          <div class="cx2-axis cx2-axis-h">Lib</div>
         </div>
-        <div class="cx-row">
-          <span class="cx-pole">Au</span>
-          <div class="cx-bar"><div class="cx-dot" style="left:${alPos}%;background:${alc}"></div></div>
-          <span class="cx-pole">Li</span>
-          <span class="cx-lbl" style="color:${alc}">${alLabel(al)}</span>
+        <div class="cx2-labels">
+          <div class="cx2-lr-lbl" style="color:${lrc}">${lrLabel(lr)}</div>
+          <div class="cx2-al-lbl" style="color:${alc}">${alLabel(al)}</div>
         </div>
       </div>`;
   }
@@ -556,9 +578,11 @@ const App = (() => {
   }
 
   function renderArticleCard(a) {
-    // Per-source lean: look up by source name, fall back to article lr_score
+    // Slide 1: use the article's actual lr_score (scored per-article via score-compass,
+    //   includes source baseline + keyword analysis + category nudges — more accurate than source name alone).
+    // Slide 2: use source-name lookup as best available approximation (no separate per-source score stored).
     const articleLr = a.lr_score != null ? Number(a.lr_score) : 0;
-    const s1Score = srcLrScore(a.source_1_name) ?? articleLr;
+    const s1Score = articleLr;
     const s2Score = srcLrScore(a.source_2_name) ?? articleLr;
     const lean1Label = lrLabel(s1Score);
     const lean2Label = lrLabel(s2Score);
