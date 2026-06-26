@@ -16,7 +16,8 @@ const App = (() => {
     selectedTopic: null,
     speech: null,
     isPlaying: false,
-    searchResults: { articles: [], topics: [] }
+    searchResults: { articles: [], topics: [] },
+    dailySummary: ''
   };
 
   // ── Category config ────────────────────────────
@@ -293,11 +294,48 @@ const App = (() => {
       p.classList.toggle('active', p.dataset.cat === cat);
     });
     const filtered = cat === 'all' ? state.articles : state.articles.filter(a => a.category === cat);
+    updateSummaryForCategory(cat, filtered);
     renderArticleList(document.getElementById('today-content'), filtered, false);
+  }
+
+  function updateSummaryForCategory(cat, articles) {
+    const tagEl = document.querySelector('.summary-tag');
+    const textEl = document.getElementById('summary-text');
+    if (!tagEl || !textEl) return;
+
+    if (cat === 'all') {
+      tagEl.textContent = '📋 Today at a Glance';
+      textEl.textContent = state.dailySummary;
+    } else {
+      const catInfo = CATS[cat] || {};
+      tagEl.textContent = (catInfo.icon || '📋') + ' ' + (catInfo.label || cat) + ' Today';
+      if (!articles.length) {
+        textEl.textContent = 'No ' + (catInfo.label || cat) + ' articles today.';
+      } else {
+        const top = articles.slice(0, 4);
+        const parts = top.map(a => a.summary || a.headline).filter(Boolean);
+        const extra = articles.length > 4 ? ' Plus ' + (articles.length - 4) + ' more stories.' : '';
+        textEl.textContent = parts.join(' ') + extra;
+      }
+    }
+    // Reset expand/collapse state
+    textEl.classList.remove('expanded');
+    const toggleBtn = textEl.nextElementSibling;
+    if (toggleBtn) toggleBtn.textContent = 'Read more';
+
+    // Update audio button label
+    const readAllBtn = document.querySelector('.audio-bar button:last-child');
+    if (readAllBtn) {
+      const catInfo = CATS[cat] || {};
+      readAllBtn.textContent = cat === 'all'
+        ? '▶ Read All Headlines'
+        : '▶ Read ' + (catInfo.label || cat);
+    }
   }
 
   function renderToday(articles, summary) {
     const el = document.getElementById('today-content');
+    state.dailySummary = summary;
 
     // Update live/demo badge in header
     const badge = document.getElementById('data-source-badge');
@@ -321,11 +359,16 @@ const App = (() => {
 
     el.innerHTML = summaryHtml;
     renderArticleList(el, articles, true);
+    // If user is in a filtered category, update the summary for that view
+    if (state.category !== 'all') {
+      const filtered = articles.filter(a => a.category === state.category);
+      updateSummaryForCategory(state.category, filtered);
+    }
   }
 
   function renderArticleList(container, articles, withSectionHeaders) {
-    // Remove existing article sections (keep summary card)
-    container.querySelectorAll('.section-head, .article-card, .persp-card').forEach(e => e.remove());
+    // Remove existing article sections and empty-state (keep summary card)
+    container.querySelectorAll('.section-head, .article-card, .persp-card, .empty-state').forEach(e => e.remove());
 
     if (!articles.length) {
       container.insertAdjacentHTML('beforeend', '<div class="empty-state"><span class="empty-icon">📭</span><p>No articles for this category today.</p></div>');
@@ -543,6 +586,16 @@ const App = (() => {
             .order('date', { ascending: false });
           articles = arts || [];
         }
+        // Fallback: if no linked articles, query by the topic's category (shows today's relevant articles)
+        if (!articles.length && topic.category && topic.category !== 'general') {
+          const { data: catArts } = await db
+            .from('articles')
+            .select('*')
+            .eq('category', topic.category)
+            .order('date', { ascending: false })
+            .limit(20);
+          articles = catArts || [];
+        }
       } else {
         articles = DEMO_ARTICLES.filter(a => (a.topics || []).some(t => t.id === topicId));
       }
@@ -687,7 +740,10 @@ const App = (() => {
   }
 
   function readAll() {
-    const headlines = state.articles.map(a => a.headline + '. ' + a.summary).join('. Next story: ');
+    const filtered = state.category === 'all'
+      ? state.articles
+      : state.articles.filter(a => a.category === state.category);
+    const headlines = filtered.map(a => a.headline + '. ' + a.summary).join('. Next story: ');
     speak(headlines);
   }
 
