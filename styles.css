@@ -248,10 +248,18 @@ a { color: var(--accent); }
 .card-full.open { display: block; padding-top: 12px; }
 .card-footer {
   display: flex; justify-content: space-between; align-items: center;
-  padding: 8px 16px 12px;
+  padding: 8px 16px 12px; gap: 8px;
+}
+.card-read-link {
+  font-size: 12px; font-weight: 600; color: var(--accent);
+  text-decoration: none; white-space: nowrap; flex-shrink: 0;
+}
+.card-read-link:hover { text-decoration: underline; }
+.card-footer-right {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end;
 }
 .card-expand {
-  font-size: 12px; font-weight: 600; color: var(--accent);
+  font-size: 12px; font-weight: 600; color: var(--text-micro); white-space: nowrap;
 }
 .card-topic-chips { display: flex; gap: 5px; flex-wrap: wrap; }
 .topic-chip {
@@ -294,7 +302,23 @@ a { color: var(--accent); }
 .persp-text { font-size: 13px; line-height: 1.6; color: var(--text-muted); }
 .persp-link {
   font-size: 12px; color: var(--accent); font-weight: 600;
-  display: block; margin-top: 8px; text-decoration: none;
+  display: block; margin-top: 10px; text-decoration: none;
+}
+.persp-link:hover { text-decoration: underline; }
+.persp-lean {
+  display: inline-block; font-size: 10px; font-weight: 700;
+  letter-spacing: 0.6px; text-transform: uppercase;
+  padding: 3px 8px; border-radius: 4px; margin-bottom: 8px;
+}
+.persp-lean-left {
+  background: rgba(220, 38, 38, 0.12);
+  color: #dc2626;
+  border: 1px solid rgba(220, 38, 38, 0.25);
+}
+.persp-lean-right {
+  background: rgba(37, 99, 235, 0.12);
+  color: #2563eb;
+  border: 1px solid rgba(37, 99, 235, 0.25);
 }
 .persp-dots {
   display: flex; justify-content: center; gap: 6px;
