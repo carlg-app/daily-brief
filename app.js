@@ -288,12 +288,33 @@ const App = (() => {
     }
   }
 
+  // Keywords that identify wars/conflict articles (used when category field can't be set)
+  const WAR_KWS = ['drc','congo','ukraine','russia','israel','palestine','gaza','iran',
+    'ceasefire','m23','rebel','hamas','hezbollah','missile','airstrike','troops',
+    'combat','militia','insurgent','conflict','frontline','occupation','siege'];
+  const WARS_TOPIC_ID = 'a2660000-0000-0000-0000-000000000001';
+
+  function isWarArticle(a) {
+    if (a.category === 'wars') return true;
+    if ((a.topics || []).some(t => t.id === WARS_TOPIC_ID)) return true;
+    const text = ((a.headline || '') + ' ' + (a.summary || '')).toLowerCase();
+    return WAR_KWS.some(kw => text.includes(kw));
+  }
+
   function filterCategory(cat) {
     state.category = cat;
     document.querySelectorAll('.pill').forEach(p => {
       p.classList.toggle('active', p.dataset.cat === cat);
     });
-    const filtered = cat === 'all' ? state.articles : state.articles.filter(a => a.category === cat);
+    let filtered;
+    if (cat === 'all') {
+      filtered = state.articles;
+    } else if (cat === 'wars') {
+      // Use topic links + keyword match because DB constraint blocks category='wars'
+      filtered = state.articles.filter(isWarArticle);
+    } else {
+      filtered = state.articles.filter(a => a.category === cat);
+    }
     updateSummaryForCategory(cat, filtered);
     renderArticleList(document.getElementById('today-content'), filtered, false);
   }
