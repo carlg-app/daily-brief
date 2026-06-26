@@ -327,14 +327,16 @@ const App = (() => {
           </div>
           <div class="persp-slider" id="slider-${a.id}" onscroll="App.updateDots('${a.id}', this)">
             <div class="persp-slide">
+              <div class="persp-lean persp-lean-left">🔴 Left-leaning</div>
               <div class="persp-source">${escHtml(a.source_1_name || '')}</div>
               <div class="persp-text">${escHtml(a.summary)}</div>
-              ${a.source_1_url ? `<a class="persp-link" href="${a.source_1_url}" target="_blank">Read on ${escHtml(a.source_1_name)} →</a>` : ''}
+              ${a.source_1_url ? `<a class="persp-link" href="${a.source_1_url}" target="_blank">Read full article on ${escHtml(a.source_1_name)} →</a>` : ''}
             </div>
             <div class="persp-slide">
+              <div class="persp-lean persp-lean-right">🔵 Right-leaning</div>
               <div class="persp-source">${escHtml(a.source_2_name)}</div>
               <div class="persp-text">${escHtml(a.source_2_text || '')}</div>
-              ${a.source_2_url ? `<a class="persp-link" href="${a.source_2_url}" target="_blank">Read on ${escHtml(a.source_2_name)} →</a>` : ''}
+              ${a.source_2_url ? `<a class="persp-link" href="${a.source_2_url}" target="_blank">Read full article on ${escHtml(a.source_2_name)} →</a>` : ''}
             </div>
           </div>
           <div class="persp-dots">
@@ -359,12 +361,14 @@ const App = (() => {
           <div class="card-summary">${escHtml(a.summary)}</div>
         </div>
         <div class="card-full" id="full-${a.id}">
-          ${a.full_content ? escHtml(a.full_content) : '<em>Full content not available. Tap the source link to read more.</em>'}
-          ${a.source_1_url ? `<br><br><a href="${a.source_1_url}" target="_blank" style="color:var(--accent);font-weight:600">Read on ${escHtml(a.source_1_name)} →</a>` : ''}
+          ${a.full_content ? escHtml(a.full_content) : '<em>No additional content available.</em>'}
         </div>
         <div class="card-footer">
-          <button class="card-expand" id="expand-${a.id}" onclick="App.toggleCard('${a.id}')">Expand ›</button>
-          <div class="card-topic-chips">${topics}</div>
+          ${a.source_1_url ? `<a class="card-read-link" href="${a.source_1_url}" target="_blank">Read full article →</a>` : '<span></span>'}
+          <div class="card-footer-right">
+            <div class="card-topic-chips">${topics}</div>
+            <button class="card-expand" id="expand-${a.id}" onclick="App.toggleCard('${a.id}')">More ›</button>
+          </div>
         </div>
       </div>`;
   }
