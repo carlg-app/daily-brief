@@ -649,13 +649,13 @@ const App = (() => {
         let leftSrc, leftScore, leftText, leftUrl;
         let rightSrc, rightScore, rightText, rightUrl;
         if (eff1 <= eff2) {
-          // source_1 is left-leaning
-          leftSrc = a.source_1_name; leftScore = eff1; leftText = null; leftUrl = a.source_1_url;
+          // source_1 is left-leaning (standard order per SKILL.md)
+          leftSrc = a.source_1_name; leftScore = eff1; leftText = a.summary; leftUrl = a.source_1_url;
           rightSrc = a.source_2_name; rightScore = eff2; rightText = a.source_2_text; rightUrl = a.source_2_url;
         } else {
-          // source_2 is left-leaning (swap)
+          // source_2 is left-leaning (swapped — legacy data)
           leftSrc = a.source_2_name; leftScore = eff2; leftText = a.source_2_text; leftUrl = a.source_2_url;
-          rightSrc = a.source_1_name; rightScore = eff1; rightText = null; rightUrl = a.source_1_url;
+          rightSrc = a.source_1_name; rightScore = eff1; rightText = a.summary; rightUrl = a.source_1_url;
         }
         const al = a.al_score != null ? Number(a.al_score) : 0;
         const topicChips = (a.topics || []).map(t =>
@@ -676,18 +676,23 @@ const App = (() => {
               <div class="persp-slide">
                 <div class="persp-lean" style="color:${lrColor(leftScore)}">${leanEmoji(leftScore)} ${escHtml(lrLabel(leftScore))}</div>
                 <div class="persp-source">${escHtml(leftSrc || '')}</div>
-                ${leftText
-                  ? `<div class="persp-text">${escHtml(leftText)}</div>`
-                  : `<div class="persp-text persp-text-cta">Read ${escHtml(leftSrc || 'this source')}'s full perspective below.</div>`}
-                ${leftUrl ? `<a class="persp-link" href="${leftUrl}" target="_blank">Read on ${escHtml(leftSrc)} →</a>` : ''}
+                <div class="persp-text">${escHtml(leftText || '')}</div>
+                ${leftUrl ? `<div class="persp-link-row">
+                  <a class="persp-link" href="${leftUrl}" target="_blank">Read on ${escHtml(leftSrc)} →</a>
+                  <a class="persp-link-search" href="https://www.google.com/search?q=${encodeURIComponent((leftSrc||'')+' '+a.headline)}" target="_blank">↗ Search</a>
+                </div>` : ''}
                 ${compassSlideHtml(leftScore, al, 'left')}
               </div>
 
-              <!-- CENTER slide — neutral facts, no compass -->
+              <!-- CENTER slide — compare panel, no compass -->
               <div class="persp-slide persp-slide-center">
-                <div class="persp-center-label">⚖ The Facts</div>
-                <div class="persp-text">${escHtml(a.summary)}</div>
-                <div class="persp-center-hint">← left perspective &nbsp;·&nbsp; right perspective →</div>
+                <div class="persp-center-label">⚖ Two Perspectives</div>
+                <div class="persp-center-sources">
+                  <div class="persp-center-src" style="color:${lrColor(leftScore)}">${leanEmoji(leftScore)} ${escHtml(leftSrc||'')}</div>
+                  <div class="persp-center-vs">vs</div>
+                  <div class="persp-center-src" style="color:${lrColor(rightScore)}">${leanEmoji(rightScore)} ${escHtml(rightSrc||'')}</div>
+                </div>
+                <div class="persp-center-hint">← swipe to read each perspective →</div>
                 ${topicChips ? `<div class="persp-center-chips">${topicChips}</div>` : ''}
               </div>
 
@@ -695,10 +700,11 @@ const App = (() => {
               <div class="persp-slide">
                 <div class="persp-lean" style="color:${lrColor(rightScore)}">${leanEmoji(rightScore)} ${escHtml(lrLabel(rightScore))}</div>
                 <div class="persp-source">${escHtml(rightSrc || '')}</div>
-                ${rightText
-                  ? `<div class="persp-text">${escHtml(rightText)}</div>`
-                  : `<div class="persp-text persp-text-cta">Read ${escHtml(rightSrc || 'this source')}'s full perspective below.</div>`}
-                ${rightUrl ? `<a class="persp-link" href="${rightUrl}" target="_blank">Read on ${escHtml(rightSrc)} →</a>` : ''}
+                <div class="persp-text">${escHtml(rightText || '')}</div>
+                ${rightUrl ? `<div class="persp-link-row">
+                  <a class="persp-link" href="${rightUrl}" target="_blank">Read on ${escHtml(rightSrc)} →</a>
+                  <a class="persp-link-search" href="https://www.google.com/search?q=${encodeURIComponent((rightSrc||'')+' '+a.headline)}" target="_blank">↗ Search</a>
+                </div>` : ''}
                 ${compassSlideHtml(rightScore, al, 'right')}
               </div>
 
@@ -717,6 +723,17 @@ const App = (() => {
       `<span class="topic-chip" onclick="App.openTopic('${t.id}')">${escHtml(t.name)}</span>`
     ).join('');
 
+    // Warn if article has strong lean but only one source
+    const singleSrcLr = s1Score;
+    const isBiased = Math.abs(singleSrcLr) > 20;
+    const biasWarning = isBiased
+      ? `<div class="card-bias-warn">${leanEmoji(singleSrcLr)} Single perspective · ${escHtml(lrLabel(singleSrcLr))} source</div>`
+      : '';
+
+    const searchUrl = a.source_1_url
+      ? `https://www.google.com/search?q=${encodeURIComponent((a.source_1_name||'')+' '+a.headline)}`
+      : '';
+
     return `
       <div class="article-card" id="card-${a.id}">
         <div class="card-body" onclick="App.toggleCard('${a.id}')">
@@ -727,11 +744,15 @@ const App = (() => {
           <div class="card-headline">${escHtml(a.headline)}</div>
           <div class="card-summary">${escHtml(a.summary)}</div>
         </div>
+        ${biasWarning}
         <div class="card-full" id="full-${a.id}">
           ${a.full_content ? escHtml(a.full_content) : '<em>No additional content available.</em>'}
         </div>
         <div class="card-footer">
-          ${a.source_1_url ? `<a class="card-read-link" href="${a.source_1_url}" target="_blank">Read full article →</a>` : '<span></span>'}
+          ${a.source_1_url ? `<div class="card-link-row">
+            <a class="card-read-link" href="${a.source_1_url}" target="_blank">Read full article →</a>
+            <a class="card-search-link" href="${searchUrl}" target="_blank">↗ Search</a>
+          </div>` : '<span></span>'}
           <div class="card-footer-right">
             <div class="card-topic-chips">${topics}</div>
             <button class="card-expand" id="expand-${a.id}" onclick="App.toggleCard('${a.id}')">More ›</button>
