@@ -684,15 +684,11 @@ const App = (() => {
                 ${compassSlideHtml(leftScore, al, 'left')}
               </div>
 
-              <!-- CENTER slide — compare panel, no compass -->
+              <!-- CENTER slide — raw neutral facts (full_content stores neutral summary for multi-perspective articles) -->
               <div class="persp-slide persp-slide-center">
-                <div class="persp-center-label">⚖ Two Perspectives</div>
-                <div class="persp-center-sources">
-                  <div class="persp-center-src" style="color:${lrColor(leftScore)}">${leanEmoji(leftScore)} ${escHtml(leftSrc||'')}</div>
-                  <div class="persp-center-vs">vs</div>
-                  <div class="persp-center-src" style="color:${lrColor(rightScore)}">${leanEmoji(rightScore)} ${escHtml(rightSrc||'')}</div>
-                </div>
-                <div class="persp-center-hint">← swipe to read each perspective →</div>
+                <div class="persp-center-label">⚖ The Facts</div>
+                <div class="persp-text">${escHtml(a.full_content || a.summary)}</div>
+                <div class="persp-center-hint">← ${escHtml(leftSrc||'Left')} &nbsp;·&nbsp; ${escHtml(rightSrc||'Right')} →</div>
                 ${topicChips ? `<div class="persp-center-chips">${topicChips}</div>` : ''}
               </div>
 
