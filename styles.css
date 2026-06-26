@@ -121,7 +121,14 @@ a { color: var(--accent); }
   font-size: 24px; font-weight: 700; letter-spacing: -0.5px; color: white;
 }
 .header-top { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 14px; }
+.header-top-left { display: flex; align-items: center; gap: 8px; }
 .header-actions { display: flex; gap: 6px; margin-top: 4px; }
+.data-source-badge {
+  font-size: 9px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;
+  padding: 2px 6px; border-radius: 4px;
+}
+.badge-live { color: #4ade80; background: rgba(74,222,128,0.15); border: 1px solid rgba(74,222,128,0.3); }
+.badge-demo { color: #f59e0b; background: rgba(245,158,11,0.15); border: 1px solid rgba(245,158,11,0.3); }
 .icon-btn {
   width: 36px; height: 36px; border-radius: 50%;
   background: rgba(255,255,255,0.1);
