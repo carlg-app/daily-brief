@@ -133,6 +133,11 @@ const App = (() => {
     }
   }
 
+  // Rejects after ms milliseconds — used to race against Supabase queries
+  function timeout(ms) {
+    return new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms));
+  }
+
   // ── Setup ──────────────────────────────────────
   function saveSetup() {
     const url = document.getElementById('input-url').value.trim();
@@ -221,18 +226,19 @@ const App = (() => {
 
     try {
       if (db) {
-        // Fetch from Supabase
-        const { data: arts } = await db
-          .from('articles')
-          .select('*, article_topics(topic_id, topics(id, name))')
-          .eq('date', todayStr())
-          .order('created_at');
-
-        const { data: sum } = await db
-          .from('daily_summaries')
-          .select('summary')
-          .eq('date', todayStr())
-          .maybeSingle();
+        const [{ data: arts }, { data: sum }] = await Promise.race([
+          Promise.all([
+            db.from('articles')
+              .select('*, article_topics(topic_id, topics(id, name))')
+              .eq('date', todayStr())
+              .order('created_at'),
+            db.from('daily_summaries')
+              .select('summary')
+              .eq('date', todayStr())
+              .maybeSingle()
+          ]),
+          timeout(6000).then(() => { throw new Error('timeout'); })
+        ]);
 
         if (arts?.length) {
           articles = arts.map(a => ({
@@ -382,10 +388,10 @@ const App = (() => {
     let topics = [];
     try {
       if (db) {
-        const { data } = await db
-          .from('topics')
-          .select('*')
-          .order('article_count', { ascending: false });
+        const { data } = await Promise.race([
+          db.from('topics').select('*').order('article_count', { ascending: false }),
+          timeout(6000).then(() => { throw new Error('timeout'); })
+        ]);
         topics = data?.length ? data : DEMO_TOPICS;
       } else {
         topics = DEMO_TOPICS;
