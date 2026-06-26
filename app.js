@@ -201,7 +201,9 @@ const App = (() => {
   }
 
   function todayStr() {
-    return new Date().toISOString().split('T')[0];
+    // Use LOCAL date (not UTC) so NZ timezone is correct
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   }
 
   function fmtDate(dateStr) {
@@ -218,77 +220,64 @@ const App = (() => {
     const today = new Date();
     el.textContent = today.toLocaleDateString('en-NZ', { weekday: 'long', day: 'numeric', month: 'long' });
 
-    const content = document.getElementById('today-content');
-    content.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Loading today\'s brief…</p></div>';
+    // Show demo data immediately — no blank spinner on load
+    state.articles = DEMO_ARTICLES;
+    state.isLive = false;
+    renderToday(DEMO_ARTICLES, DEMO_SUMMARY);
 
-    let articles = [];
-    let summary = DEMO_SUMMARY;
-    let isLive = false;
+    if (!db) {
+      console.log('[Daily Brief] No Supabase connection');
+      return;
+    }
 
+    // Load live data in background and update when ready
     try {
-      if (db) {
-        const dateStr = todayStr();
-        console.log('[Daily Brief] Loading date:', dateStr);
+      const dateStr = todayStr();
+      console.log('[Daily Brief] Loading date:', dateStr);
 
-        // Try full join query first
-        const [artsRes, sumRes] = await Promise.race([
-          Promise.all([
-            db.from('articles')
-              .select('*, article_topics(topic_id, topics(id, name))')
-              .eq('date', dateStr)
-              .order('created_at'),
-            db.from('daily_summaries')
-              .select('summary')
-              .eq('date', dateStr)
-              .maybeSingle()
-          ]),
-          timeout(10000).then(() => { throw new Error('timeout'); })
-        ]);
-
-        if (artsRes.error) {
-          console.error('[Daily Brief] Join query error:', artsRes.error);
-        }
-
-        if (artsRes.data?.length) {
-          isLive = true;
-          articles = artsRes.data.map(a => ({
-            ...a,
-            topics: a.article_topics?.map(at => at.topics).filter(Boolean) || []
-          }));
-          if (sumRes.data?.summary) summary = sumRes.data.summary;
-        } else {
-          // Fallback: simple query without join (in case FK relationships aren't resolved)
-          console.log('[Daily Brief] Join returned empty — trying simple query');
-          const { data: simpleArts, error: simpleErr } = await db
-            .from('articles')
-            .select('*')
+      const [artsRes, sumRes] = await Promise.race([
+        Promise.all([
+          db.from('articles')
+            .select('*, article_topics(topic_id, topics(id, name))')
             .eq('date', dateStr)
-            .order('created_at');
+            .order('created_at'),
+          db.from('daily_summaries')
+            .select('summary')
+            .eq('date', dateStr)
+            .maybeSingle()
+        ]),
+        timeout(8000).then(() => { throw new Error('timeout'); })
+      ]);
 
-          if (simpleErr) {
-            console.error('[Daily Brief] Simple query error:', simpleErr);
-          } else if (simpleArts?.length) {
-            isLive = true;
-            articles = simpleArts.map(a => ({ ...a, topics: [] }));
-            if (sumRes.data?.summary) summary = sumRes.data.summary;
-          } else {
-            console.log('[Daily Brief] No articles found for', dateStr, '— using demo data');
-          }
+      if (artsRes.error) console.error('[Daily Brief] Join query error:', artsRes.error);
 
-          if (!isLive) articles = DEMO_ARTICLES;
-        }
+      if (artsRes.data?.length) {
+        const liveArticles = artsRes.data.map(a => ({
+          ...a,
+          topics: a.article_topics?.map(at => at.topics).filter(Boolean) || []
+        }));
+        state.articles = liveArticles;
+        state.isLive = true;
+        renderToday(liveArticles, sumRes.data?.summary || DEMO_SUMMARY);
       } else {
-        console.log('[Daily Brief] No Supabase connection — using demo data');
-        articles = DEMO_ARTICLES;
+        // Fallback: simple query without join
+        console.log('[Daily Brief] Join returned empty — trying simple query');
+        const { data: simpleArts, error: simpleErr } = await db
+          .from('articles').select('*').eq('date', dateStr).order('created_at');
+
+        if (simpleErr) console.error('[Daily Brief] Simple query error:', simpleErr);
+        else if (simpleArts?.length) {
+          state.articles = simpleArts.map(a => ({ ...a, topics: [] }));
+          state.isLive = true;
+          renderToday(state.articles, sumRes.data?.summary || DEMO_SUMMARY);
+        } else {
+          console.log('[Daily Brief] No articles for', dateStr, '— showing demo');
+        }
       }
     } catch (e) {
       console.error('[Daily Brief] Load failed:', e.message);
-      articles = DEMO_ARTICLES;
+      // Already showing demo, nothing to do
     }
-
-    state.articles = articles;
-    state.isLive = isLive;
-    renderToday(articles, summary);
   }
 
   function filterCategory(cat) {
