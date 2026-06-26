@@ -556,9 +556,11 @@ const App = (() => {
   }
 
   function renderArticleCard(a) {
-    // Per-source lean: look up by source name, fall back to article lr_score
+    // Slide 1: use the article's actual lr_score (scored per-article via score-compass,
+    //   includes source baseline + keyword analysis + category nudges — more accurate than source name alone).
+    // Slide 2: use source-name lookup as best available approximation (no separate per-source score stored).
     const articleLr = a.lr_score != null ? Number(a.lr_score) : 0;
-    const s1Score = srcLrScore(a.source_1_name) ?? articleLr;
+    const s1Score = articleLr;
     const s2Score = srcLrScore(a.source_2_name) ?? articleLr;
     const lean1Label = lrLabel(s1Score);
     const lean2Label = lrLabel(s2Score);
