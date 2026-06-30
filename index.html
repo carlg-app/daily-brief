@@ -55,10 +55,13 @@
             <button class="icon-btn" onclick="App.showSettings()" title="Settings">⚙️</button>
           </div>
         </div>
+        <!-- Date navigation row (populated by JS) -->
+        <div id="date-nav-row" class="date-nav-row"></div>
         <!-- Category filter pills -->
         <div class="pills-wrap">
           <div class="pills" id="category-pills">
             <button class="pill active" data-cat="all" onclick="App.filterCategory('all')">All</button>
+            <button class="pill pill-foryou" data-cat="for-you" onclick="App.filterCategory('for-you')">★ For You</button>
             <button class="pill" data-cat="world" onclick="App.filterCategory('world')">🌏 World</button>
             <button class="pill" data-cat="wars" onclick="App.filterCategory('wars')">⚔️ Wars</button>
             <button class="pill" data-cat="nz" onclick="App.filterCategory('nz')">🥝 NZ</button>
